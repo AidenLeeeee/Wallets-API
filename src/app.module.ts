@@ -4,9 +4,30 @@ import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { TradeLogsModule } from './trade-logs/trade-logs.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [UsersModule, WalletsModule, TradeLogsModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    TypeOrmModule.forRoot({
+      type: 'mariadb',
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT),
+      username: 'root',
+      password: process.env.DB_PASSWORD,
+      database: 'test',
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: Boolean(process.env.DB_SYNC),
+      autoLoadEntities: true,
+      logging: Boolean(process.env.DB_LOG),
+    }),
+    UsersModule,
+    WalletsModule,
+    TradeLogsModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
