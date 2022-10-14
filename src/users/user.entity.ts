@@ -1,6 +1,7 @@
 import {
   IsEmail,
   IsNotEmpty,
+  IsNumber,
   IsPhoneNumber,
   IsPositive,
   IsString,
@@ -26,6 +27,7 @@ export class User {
   userName: string;
 
   @IsPositive()
+  @IsNumber()
   @Column({ nullable: true, name: 'birth_year' })
   birthYear: number;
 

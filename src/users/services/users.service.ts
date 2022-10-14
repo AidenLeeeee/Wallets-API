@@ -5,12 +5,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { TradeLogCreateDto } from 'src/trade-logs/dtos/trade-log.create.dto';
 import { Repository } from 'typeorm';
 import { UserChargeDto } from '../dtos/user.charge.dto';
 import { UserRegisterDto } from '../dtos/user.register.dto';
 import { UserSendCashDto } from '../dtos/user.send.dto';
 import { User as UserEntity } from '../user.entity';
-import { Wallet as WalletEntity } from 'src/wallets/wallet.entity';
 
 @Injectable()
 export class UsersService {
@@ -115,9 +115,34 @@ export class UsersService {
     targetUser.wallet.cashAmount = targetUserCashLeft;
     const updatedTargetUser = await this.usersRepository.save(targetUser);
 
+    // TradeLogCreateDto 객체 생성
+    const tradeLogCreateDto: TradeLogCreateDto = {
+      senderId: updatedUser.id,
+      receiverId: updatedTargetUser.id,
+      cashAmount: cashAmountToSend,
+    };
+
+    return tradeLogCreateDto;
+  }
+
+  async getCash(id: number) {
+    const user = await this.usersRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.wallet', 'wallet')
+      .where('user.id = :id', { id })
+      .getOne();
+
+    // user 존재하는지 확인 (추후 로그인 대체)
+    if (!user) {
+      throw new UnauthorizedException('No user exists.');
+    }
+    // user 에게 등록된 wallet 이 존재하는지 확인
+    if (!user.wallet) {
+      throw new BadRequestException('Please register wallet first.');
+    }
+
     return {
-      user: updatedUser,
-      targetUser: updatedTargetUser,
+      cashAmount: user.wallet.cashAmount,
     };
   }
 }
