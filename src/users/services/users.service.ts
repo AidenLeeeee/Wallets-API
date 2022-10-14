@@ -115,14 +115,11 @@ export class UsersService {
     targetUser.wallet.cashAmount = targetUserCashLeft;
     const updatedTargetUser = await this.usersRepository.save(targetUser);
 
-    // TradeLogCreateDto 객체 생성
-    const tradeLogCreateDto: TradeLogCreateDto = {
-      senderId: updatedUser.id,
-      receiverId: updatedTargetUser.id,
+    return {
+      user: updatedUser,
+      targetUser: updatedTargetUser,
       cashAmount: cashAmountToSend,
     };
-
-    return tradeLogCreateDto;
   }
 
   async getCash(id: number) {

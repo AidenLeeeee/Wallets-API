@@ -7,6 +7,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
+import { TradeLogCreateDto } from 'src/trade-logs/dtos/trade-log.create.dto';
 import { TradeLogsService } from 'src/trade-logs/services/trade-logs.service';
 import { UserChargeDto } from 'src/users/dtos/user.charge.dto';
 import { UserRegisterDto } from '../dtos/user.register.dto';
@@ -47,11 +48,25 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @Body() userSendCashDto: UserSendCashDto,
   ) {
-    const tradeLogCreateDto = await this.usersService.sendCash(
+    const { user, targetUser, cashAmount } = await this.usersService.sendCash(
       id,
       userSendCashDto,
     );
-    return await this.tradeLogsService.createTradeLog(tradeLogCreateDto);
+
+    // TradeLogCreateDto 객체 생성
+    const tradeLogCreateDto: TradeLogCreateDto = {
+      senderId: user.id,
+      receiverId: targetUser.id,
+      cashAmount,
+    };
+    const tradeLogResult = await this.tradeLogsService.createTradeLog(
+      tradeLogCreateDto,
+    );
+    return {
+      sender: user,
+      receiver: targetUser,
+      tradeLog: tradeLogResult,
+    };
   }
 
   @ApiOperation({ summary: 'Get cash amount' })
