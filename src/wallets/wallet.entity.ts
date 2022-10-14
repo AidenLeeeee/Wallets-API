@@ -1,3 +1,4 @@
+import { IsNotEmpty, IsPositive, IsString } from 'class-validator';
 import { User } from 'src/users/user.entity';
 import {
   Column,
@@ -12,18 +13,23 @@ export class Wallet {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @IsString()
+  @IsNotEmpty()
   @Column({ length: 20, name: 'account_bank' })
   accountBank: string;
 
-  @Column({ name: 'account_number', unique: true })
-  accountNumber: number;
+  @IsString()
+  @IsNotEmpty()
+  @Column({ name: 'account_number' })
+  accountNumber: string;
 
+  @IsPositive()
   @Column({ name: 'cash_amount', default: 0 })
   cashAmount: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @OneToOne((type) => User, (user) => user.wallet, { onDelete: 'CASCADE' })
+  @OneToOne(() => User, (user) => user.wallet, { onDelete: 'CASCADE' })
   user: User;
 }

@@ -1,3 +1,10 @@
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsPhoneNumber,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import { Wallet } from 'src/wallets/wallet.entity';
 import {
   Column,
@@ -13,22 +20,29 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ length: 20, name: 'user_name', unique: true })
+  @IsString()
+  @IsNotEmpty()
+  @Column({ length: 20, name: 'user_name' })
   userName: string;
 
-  @Column({ nullable: true })
+  @IsPositive()
+  @Column({ nullable: true, name: 'birth_year' })
   birthYear: number;
 
-  @Column({ nullable: true, unique: true })
+  @IsEmail()
+  @IsNotEmpty()
+  @Column({ unique: true })
   email: string;
 
+  @IsPhoneNumber('KR')
+  @IsString()
   @Column({ unique: true })
   phone: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @OneToOne((type) => Wallet, (wallet) => wallet.user, { cascade: true })
-  @JoinColumn({ name: 'wallet_id', referencedColumnName: 'id' })
+  @OneToOne(() => Wallet, (wallet) => wallet.user, { cascade: true })
+  @JoinColumn({ name: 'wallet_id' })
   wallet: Wallet;
 }
