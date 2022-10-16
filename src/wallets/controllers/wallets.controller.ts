@@ -1,6 +1,5 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
-import { WalletRegisterDto } from '../dtos/wallet.register.dto';
 import { WalletsService } from '../services/wallets.service';
 
 @Controller('wallets')
@@ -11,11 +10,5 @@ export class WalletsController {
   @Get()
   async getAllWallets() {
     return await this.walletsService.getAllWallets();
-  }
-
-  @ApiOperation({ summary: 'Create a wallet' })
-  @Post()
-  async createWallet(@Body() walletRegisterDto: WalletRegisterDto) {
-    return await this.walletsService.registerWallet(walletRegisterDto);
   }
 }

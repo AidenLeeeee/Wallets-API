@@ -1,4 +1,5 @@
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Wallet as WalletEntity } from 'src/wallets/wallet.entity';
 import { EntityRepository, Repository } from 'typeorm';
 import { UserChargeDto } from '../dtos/user.charge.dto';
 import { UserRegisterDto } from '../dtos/user.register.dto';
@@ -8,8 +9,7 @@ import { User as UserEntity } from '../user.entity';
 export class UserRepository extends Repository<UserEntity> {
   // Find all users with join table
   async findAllWithJoinTable() {
-    const allUsers = await this.find({ relations: ['wallet'] });
-    return allUsers;
+    return await this.find({ relations: ['wallet'] });
   }
 
   // Find a user by Id with join table
@@ -22,7 +22,7 @@ export class UserRepository extends Repository<UserEntity> {
     return user;
   }
 
-  // Find a user by Phone Or Email
+  // Find a user by Phone or Email
   async findOneByPhoneOrEmail(phone: string, email: string) {
     return await this.findOne({
       where: [{ email }, { phone }],
@@ -59,6 +59,12 @@ export class UserRepository extends Repository<UserEntity> {
       targetUser: updatedTargetUser,
       cashAmount: cashAmountToSend,
     };
+  }
+
+  // Register wallet
+  async registerWallet(user: UserEntity, wallet: WalletEntity) {
+    user.wallet = wallet;
+    return await this.save(user);
   }
 
   // Check whether user has enough cash or not

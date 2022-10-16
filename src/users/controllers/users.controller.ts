@@ -10,6 +10,7 @@ import { ApiOperation } from '@nestjs/swagger';
 import { TradeLogCreateDto } from 'src/trade-logs/dtos/trade-log.create.dto';
 import { TradeLogsService } from 'src/trade-logs/services/trade-logs.service';
 import { UserChargeDto } from 'src/users/dtos/user.charge.dto';
+import { WalletRegisterDto } from 'src/wallets/dtos/wallet.register.dto';
 import { UserRegisterDto } from '../dtos/user.register.dto';
 import { UserSendCashDto } from '../dtos/user.send.dto';
 import { UsersService } from '../services/users.service';
@@ -78,5 +79,14 @@ export class UsersController {
     return {
       cashAmount,
     };
+  }
+
+  @ApiOperation({ summary: 'Create and register wallet' })
+  @Post(':id/wallets')
+  async registerWallet(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() walletRegisterDto: WalletRegisterDto,
+  ) {
+    return await this.usersService.registerWallet(id, walletRegisterDto);
   }
 }
