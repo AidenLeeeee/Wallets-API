@@ -59,9 +59,11 @@ export class UsersController {
       receiverId: targetUser.id,
       cashAmount,
     };
+
     const tradeLogResult = await this.tradeLogsService.createTradeLog(
       tradeLogCreateDto,
     );
+
     return {
       sender: user,
       receiver: targetUser,
@@ -72,6 +74,9 @@ export class UsersController {
   @ApiOperation({ summary: 'Get cash amount' })
   @Get(':id/cash')
   async getCash(@Param('id', ParseIntPipe) id: number) {
-    return await this.usersService.getCash(id);
+    const cashAmount = await this.usersService.getCash(id);
+    return {
+      cashAmount,
+    };
   }
 }
