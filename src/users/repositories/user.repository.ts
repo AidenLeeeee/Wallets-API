@@ -1,21 +1,40 @@
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { History as HistoryEntity } from 'src/histories/history.entity';
 import { Wallet as WalletEntity } from 'src/wallets/wallet.entity';
 import { EntityRepository, Repository } from 'typeorm';
 import { UserChargeDto } from '../dtos/user.charge.dto';
 import { UserRegisterDto } from '../dtos/user.register.dto';
+import { UserWithdrawDto } from '../dtos/user.withdraw.dto';
 import { User as UserEntity } from '../user.entity';
 
 @EntityRepository(UserEntity)
 export class UserRepository extends Repository<UserEntity> {
-  // Find all users with join table
-  async findAllWithJoinTable() {
+  // Find all users with wallet table
+  async findAllWithWalletTable() {
     return await this.find({ relations: ['wallet'] });
   }
 
-  // Find a user by Id with join table
-  async findOneByIdWithJoinTable(id: number) {
+  // Find all users with wallet and history tables
+  async findAllWithWalletAndHistoryTables() {
+    return await this.find({
+      relations: ['wallet', 'history'],
+    });
+  }
+
+  // Find a user by Id with wallet table
+  async findOneByIdWithWalletTable(id: number) {
     const user = await this.findOne({
       relations: ['wallet'],
+      where: { id: id },
+    });
+
+    return user;
+  }
+
+  // Find a user by Id with wallet and history tables
+  async findOneByIdWithWalletAndHistoryTables(id: number) {
+    const user = await this.findOne({
+      relations: ['wallet', 'history'],
       where: { id: id },
     });
 
@@ -29,6 +48,32 @@ export class UserRepository extends Repository<UserEntity> {
     });
   }
 
+  // Find a history
+  async findAllHistoryWithColumnsById(id: number, columns: string[]) {
+    return await this.createQueryBuilder('user')
+      .leftJoinAndSelect('user.history', 'history')
+      .orderBy('history.createdAt', 'DESC')
+      .select(columns)
+      .where('user.id = :id', { id })
+      .getOne();
+  }
+
+  // Find a history by filtered conditions
+  async findAllHistoryFilteredByTypes(
+    id: number,
+    columns: string[],
+    types: string,
+  ) {
+    return await this.createQueryBuilder('user')
+      .leftJoinAndSelect('user.history', 'history', 'history.types = :types', {
+        types,
+      })
+      .orderBy('history.createdAt', 'DESC')
+      .select(columns)
+      .where('user.id = :id', { id })
+      .getOne();
+  }
+
   // Create a user
   async createAndSave(userRegisterDto: UserRegisterDto) {
     return await this.save(userRegisterDto);
@@ -37,6 +82,12 @@ export class UserRepository extends Repository<UserEntity> {
   // Charge cash
   async chargeCash(user: UserEntity, userChargeDto: UserChargeDto) {
     user.wallet.cashAmount += userChargeDto.cashAmountToCharge;
+    return await this.save(user);
+  }
+
+  // Withdraw cash
+  async withdrawCash(user: UserEntity, userWithdrawDto: UserWithdrawDto) {
+    user.wallet.cashAmount -= userWithdrawDto.cashAmountToWithdraw;
     return await this.save(user);
   }
 
@@ -67,24 +118,30 @@ export class UserRepository extends Repository<UserEntity> {
     return await this.save(user);
   }
 
+  // Register history
+  async registerHistory(user: UserEntity, history: HistoryEntity) {
+    user.history.push(history);
+    return await this.save(user);
+  }
+
   // Check whether user has enough cash or not
   checkUserHasEnoughCashOrThrow(user: UserEntity, cashAmount: number): void {
     if (user.wallet.cashAmount < cashAmount) {
-      throw new BadRequestException("You don't have enough cash to send.");
+      throw new BadRequestException("ERROR: You don't have enough cash.");
     }
   }
 
   // Check whether user exist or not
   checkUserExistOrThrow(user: UserEntity | undefined): void {
     if (!user) {
-      throw new UnauthorizedException('No user matches.');
+      throw new UnauthorizedException('ERROR: No user matches.');
     }
   }
 
   // Check whether wallet exist or not
   checkWalletExistOrThrow(user: UserEntity): void {
     if (!user.wallet) {
-      throw new BadRequestException('Cannot find wallet.');
+      throw new BadRequestException('ERROR: Cannot find wallet.');
     }
   }
 

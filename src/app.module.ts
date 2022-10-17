@@ -6,6 +6,7 @@ import { WalletsModule } from './wallets/wallets.module';
 import { TradeLogsModule } from './trade-logs/trade-logs.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
+import { HistoriesModule } from './histories/histories.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ConfigModule } from '@nestjs/config';
     UsersModule,
     WalletsModule,
     TradeLogsModule,
+    HistoriesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

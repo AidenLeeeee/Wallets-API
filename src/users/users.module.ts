@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { HistoryRepository } from 'src/histories/repositories/history.repository';
 import { TradeLogRepository } from 'src/trade-logs/repositories/trade-log.repository';
 import { WalletRepository } from 'src/wallets/repositories/wallet.repository';
 import { UsersController } from './controllers/users.controller';
@@ -12,6 +13,7 @@ import { UsersService } from './services/users.service';
       UserRepository,
       WalletRepository,
       TradeLogRepository,
+      HistoryRepository,
     ]),
   ],
   controllers: [UsersController],

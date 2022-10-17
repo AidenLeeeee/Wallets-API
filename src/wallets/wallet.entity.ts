@@ -1,5 +1,5 @@
 import { IsNotEmpty, IsPositive, IsString } from 'class-validator';
-import { User } from 'src/users/user.entity';
+import { User as UserEntity } from 'src/users/user.entity';
 import {
   Column,
   CreateDateColumn,
@@ -30,6 +30,6 @@ export class Wallet {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @OneToOne(() => User, (user) => user.wallet, { onDelete: 'CASCADE' })
-  user: User;
+  @OneToOne(() => UserEntity, (user) => user.wallet, { onDelete: 'CASCADE' })
+  user: UserEntity;
 }
