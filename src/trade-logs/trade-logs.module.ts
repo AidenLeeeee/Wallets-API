@@ -1,14 +1,12 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User as UserEntity } from 'src/users/user.entity';
 import { TradeLogsController } from './controllers/trade-logs.controller';
+import { TradeLogRepository } from './repositories/trade-log.repository';
 import { TradeLogsService } from './services/trade-logs.service';
-import { TradeLog as TradeLogEntity } from './trade-log.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TradeLogEntity, UserEntity])],
+  imports: [TypeOrmModule.forFeature([TradeLogRepository])],
   controllers: [TradeLogsController],
   providers: [TradeLogsService],
-  exports: [TradeLogsService],
 })
 export class TradeLogsModule {}

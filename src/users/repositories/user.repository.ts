@@ -55,8 +55,8 @@ export class UserRepository extends Repository<UserEntity> {
     const updatedTargetUser = await this.save(targetUser);
 
     return {
-      user: updatedUser,
-      targetUser: updatedTargetUser,
+      updatedUser: updatedUser,
+      updatedTargetUser: updatedTargetUser,
       cashAmount: cashAmountToSend,
     };
   }

@@ -7,8 +7,6 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
-import { TradeLogCreateDto } from 'src/trade-logs/dtos/trade-log.create.dto';
-import { TradeLogsService } from 'src/trade-logs/services/trade-logs.service';
 import { UserChargeDto } from 'src/users/dtos/user.charge.dto';
 import { WalletRegisterDto } from 'src/wallets/dtos/wallet.register.dto';
 import { UserRegisterDto } from '../dtos/user.register.dto';
@@ -17,10 +15,7 @@ import { UsersService } from '../services/users.service';
 
 @Controller('users')
 export class UsersController {
-  constructor(
-    private readonly usersService: UsersService,
-    private readonly tradeLogsService: TradeLogsService,
-  ) {}
+  constructor(private readonly usersService: UsersService) {}
 
   @ApiOperation({ summary: 'Get all users' })
   @Get()
@@ -49,21 +44,8 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @Body() userSendCashDto: UserSendCashDto,
   ) {
-    const { user, targetUser, cashAmount } = await this.usersService.sendCash(
-      id,
-      userSendCashDto,
-    );
-
-    // TradeLogCreateDto 객체 생성
-    const tradeLogCreateDto: TradeLogCreateDto = {
-      senderId: user.id,
-      receiverId: targetUser.id,
-      cashAmount,
-    };
-
-    const tradeLogResult = await this.tradeLogsService.createTradeLog(
-      tradeLogCreateDto,
-    );
+    const { user, targetUser, tradeLogResult } =
+      await this.usersService.sendCash(id, userSendCashDto);
 
     return {
       sender: user,

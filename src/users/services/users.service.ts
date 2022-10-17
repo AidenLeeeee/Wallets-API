@@ -3,6 +3,8 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { TradeLogCreateDto } from 'src/trade-logs/dtos/trade-log.create.dto';
+import { TradeLogRepository } from 'src/trade-logs/repositories/trade-log.repository';
 import { WalletRegisterDto } from 'src/wallets/dtos/wallet.register.dto';
 import { WalletRepository } from 'src/wallets/repositories/wallet.repository';
 import { UserChargeDto } from '../dtos/user.charge.dto';
@@ -15,6 +17,7 @@ export class UsersService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly walletRepository: WalletRepository,
+    private readonly tradeLogRepository: TradeLogRepository,
   ) {}
 
   // Find all users
@@ -55,11 +58,26 @@ export class UsersService {
     // user 가 충분한 CashAmount 를 보유하고 있는지 확인
     this.userRepository.checkUserHasEnoughCashOrThrow(user, cashAmountToSend);
 
-    return await this.userRepository.sendCash(
-      user,
-      targetUser,
-      cashAmountToSend,
+    // send cash
+    const { updatedUser, updatedTargetUser, cashAmount } =
+      await this.userRepository.sendCash(user, targetUser, cashAmountToSend);
+
+    // create trade log
+    const tradeLogCreateDto: TradeLogCreateDto = {
+      senderId: updatedUser.id,
+      receiverId: updatedTargetUser.id,
+      cashAmount: cashAmount,
+    };
+
+    const tradeLogResult = await this.tradeLogRepository.createAndSave(
+      tradeLogCreateDto,
     );
+
+    return {
+      user: updatedUser,
+      targetUser: updatedTargetUser,
+      tradeLogResult: tradeLogResult,
+    };
   }
 
   // Get cash
