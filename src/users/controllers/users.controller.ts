@@ -75,6 +75,12 @@ export class UsersController {
     };
   }
 
+  @ApiOperation({ summary: 'Get trade log' })
+  @Get(':id/tradelog')
+  async getTradeLog(@Param('id', ParseIntPipe) id: number) {
+    return await this.usersService.getTradeLog(id);
+  }
+
   @ApiOperation({ summary: 'Get history' })
   @Get(':id/history')
   async getHistory(@Param('id', ParseIntPipe) id: number) {

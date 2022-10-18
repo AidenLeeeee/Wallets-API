@@ -9,6 +9,14 @@ export class TradeLogRepository extends Repository<TradeLogEntity> {
     return await this.find();
   }
 
+  // Find all trade logs by user id
+  async findAllByUserId(id: number) {
+    return await this.find({
+      where: [{ senderId: id }, { receiverId: id }],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   // Create a trade log
   async createAndSave(tradeLogCreateDto: TradeLogCreateDto) {
     return await this.save(tradeLogCreateDto);

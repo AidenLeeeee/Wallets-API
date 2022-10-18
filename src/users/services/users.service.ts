@@ -57,7 +57,7 @@ export class UsersService {
 
     // Create a deposit history
     const historyRegisterDto: HistoryRegisterDto = {
-      types: TYPES,
+      type: TYPES,
       cashAmount: userChargeDto.cashAmountToCharge,
     };
     const depositHistory = await this.historyRepository.createAndSave(
@@ -94,7 +94,7 @@ export class UsersService {
 
     // Create a withdrawal history
     const historyRegisterDto: HistoryRegisterDto = {
-      types: TYPES,
+      type: TYPES,
       cashAmount: userWithdrawDto.cashAmountToWithdraw,
     };
     const withdrawalHistory = await this.historyRepository.createAndSave(
@@ -141,11 +141,11 @@ export class UsersService {
 
     // Create a history
     const senderHistoryRegisterDto: HistoryRegisterDto = {
-      types: HistoryTypes[1],
+      type: HistoryTypes[1],
       cashAmount: cashAmount,
     };
     const receiverHistoryRegisterDto: HistoryRegisterDto = {
-      types: HistoryTypes[0],
+      type: HistoryTypes[0],
       cashAmount: cashAmount,
     };
 
@@ -176,6 +176,11 @@ export class UsersService {
     const user = await this.userRepository.findOneByIdWithWalletTable(id);
     this.userRepository.checkUserAndWalletExistOrThrow(user);
     return user.wallet.cashAmount;
+  }
+
+  // Get trade log
+  async getTradeLog(id: number) {
+    return await this.tradeLogRepository.findAllByUserId(id);
   }
 
   // Get history

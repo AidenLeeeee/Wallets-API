@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-@Entity('TradeLogs')
+@Entity('TradeLog')
 export class TradeLog {
   @PrimaryGeneratedColumn()
   id: number;
@@ -14,7 +14,7 @@ export class TradeLog {
   @IsPositive()
   @IsNumber()
   @IsNotEmpty()
-  @Column({ name: 'user_id' })
+  @Column({ name: 'sender_id' })
   senderId: number;
 
   @IsPositive()
@@ -29,6 +29,6 @@ export class TradeLog {
   @Column({ name: 'cash_amount' })
   cashAmount: number;
 
-  @CreateDateColumn({ name: 'create_at' })
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

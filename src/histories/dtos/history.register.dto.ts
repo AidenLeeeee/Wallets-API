@@ -2,14 +2,14 @@ import { ApiProperty, PickType } from '@nestjs/swagger';
 import { History as HistoryEntity } from '../history.entity';
 
 export class HistoryRegisterDto extends PickType(HistoryEntity, [
-  'types',
+  'type',
   'cashAmount',
 ] as const) {
   @ApiProperty({
     example: 'deposit',
     description: "'deposit' or 'withdrawal'",
   })
-  types: string;
+  type: string;
 
   @ApiProperty({
     example: '10000',

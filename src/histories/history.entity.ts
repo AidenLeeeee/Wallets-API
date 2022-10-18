@@ -25,12 +25,12 @@ export class History {
   @IsString()
   @IsNotEmpty()
   @Column()
-  types: string;
+  type: string;
 
   @IsPositive()
   @IsNumber()
   @IsNotEmpty()
-  @Column()
+  @Column({ name: 'cash_amount' })
   cashAmount: number;
 
   @CreateDateColumn({ name: 'created_at' })

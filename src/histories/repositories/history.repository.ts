@@ -21,10 +21,10 @@ export class HistoryRepository extends Repository<HistoryEntity> {
   }
 
   // Find a history filtered by types
-  async findAllHistoryByUserIdWithTypes(id: number, types: string) {
+  async findAllHistoryByUserIdWithTypes(id: number, type: string) {
     return await this.find({
       relations: ['user'],
-      where: { user: id, types: types },
+      where: { user: id, type: type },
       order: { createdAt: 'DESC' },
     });
   }
