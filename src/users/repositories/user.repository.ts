@@ -48,32 +48,6 @@ export class UserRepository extends Repository<UserEntity> {
     });
   }
 
-  // Find a history
-  async findAllHistoryWithColumnsById(id: number, columns: string[]) {
-    return await this.createQueryBuilder('user')
-      .leftJoinAndSelect('user.history', 'history')
-      .orderBy('history.createdAt', 'DESC')
-      .select(columns)
-      .where('user.id = :id', { id })
-      .getOne();
-  }
-
-  // Find a history by filtered conditions
-  async findAllHistoryFilteredByTypes(
-    id: number,
-    columns: string[],
-    types: string,
-  ) {
-    return await this.createQueryBuilder('user')
-      .leftJoinAndSelect('user.history', 'history', 'history.types = :types', {
-        types,
-      })
-      .orderBy('history.createdAt', 'DESC')
-      .select(columns)
-      .where('user.id = :id', { id })
-      .getOne();
-  }
-
   // Create a user
   async createAndSave(userRegisterDto: UserRegisterDto) {
     return await this.save(userRegisterDto);

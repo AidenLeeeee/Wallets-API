@@ -11,6 +11,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -36,5 +37,6 @@ export class History {
   createdAt: Date;
 
   @ManyToOne(() => UserEntity, (user) => user.history)
+  @JoinColumn({ name: 'user_id' })
   user: UserEntity;
 }

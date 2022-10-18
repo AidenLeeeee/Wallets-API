@@ -51,6 +51,5 @@ export class User {
   wallet: WalletEntity;
 
   @OneToMany(() => HistoryEntity, (history) => history.user)
-  @JoinColumn({ name: 'history_id' })
   history: HistoryEntity[];
 }

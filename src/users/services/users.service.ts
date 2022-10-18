@@ -180,32 +180,27 @@ export class UsersService {
 
   // Get history
   async getHistory(id: number) {
-    const columns = ['user.id', 'history'];
     const user = await this.userRepository.findOneByIdWithWalletTable(id);
     this.userRepository.checkUserAndWalletExistOrThrow(user);
-    return await this.userRepository.findAllHistoryWithColumnsById(id, columns);
+    return await this.historyRepository.findAllHistoryByUserId(id);
   }
 
   // Get deposit history
   async getDepositHistory(id: number) {
-    const columns = ['user.id', 'history'];
     const user = await this.userRepository.findOneByIdWithWalletTable(id);
     this.userRepository.checkUserAndWalletExistOrThrow(user);
-    return await this.userRepository.findAllHistoryFilteredByTypes(
+    return await this.historyRepository.findAllHistoryByUserIdWithTypes(
       id,
-      columns,
       HistoryTypes[0],
     );
   }
 
   // Get withdrawal history
   async getWithdrawalHistory(id: number) {
-    const columns = ['user.id', 'history'];
     const user = await this.userRepository.findOneByIdWithWalletTable(id);
     this.userRepository.checkUserAndWalletExistOrThrow(user);
-    return await this.userRepository.findAllHistoryFilteredByTypes(
+    return await this.historyRepository.findAllHistoryByUserIdWithTypes(
       id,
-      columns,
       HistoryTypes[1],
     );
   }

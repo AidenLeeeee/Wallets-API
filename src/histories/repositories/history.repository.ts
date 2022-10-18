@@ -11,6 +11,24 @@ export class HistoryRepository extends Repository<HistoryEntity> {
     });
   }
 
+  // Find a history without types
+  async findAllHistoryByUserId(id: number) {
+    return await this.find({
+      relations: ['user'],
+      where: { user: id },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  // Find a history filtered by types
+  async findAllHistoryByUserIdWithTypes(id: number, types: string) {
+    return await this.find({
+      relations: ['user'],
+      where: { user: id, types: types },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   // Create a history
   async createAndSave(historyRegisterDto: HistoryRegisterDto) {
     return await this.save(historyRegisterDto);
