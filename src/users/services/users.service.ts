@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { InjectConnection } from '@nestjs/typeorm';
 import { HistoryTypes } from 'src/common/types/types';
 import { HistoryRepository } from 'src/histories/repositories/history.repository';
 import { TradeLogRepository } from 'src/trade-logs/repositories/trade-log.repository';
 import { WalletRegisterDto } from 'src/wallets/dtos/wallet.register.dto';
 import { WalletRepository } from 'src/wallets/repositories/wallet.repository';
+import { Connection } from 'typeorm';
 import { UserChargeDto } from '../dtos/user.charge.dto';
 import { UserRegisterDto } from '../dtos/user.register.dto';
 import { UserSendCashDto } from '../dtos/user.send.dto';
@@ -17,6 +19,7 @@ export class UsersService {
     private readonly walletRepository: WalletRepository,
     private readonly tradeLogRepository: TradeLogRepository,
     private readonly historyRepository: HistoryRepository,
+    @InjectConnection() private connection: Connection,
   ) {}
 
   // Find all users
@@ -35,29 +38,41 @@ export class UsersService {
 
   // Charge cash
   async chargeCash(id: number, userChargeDto: UserChargeDto) {
+    const queryRunner = this.connection.createQueryRunner();
+    const entityManager = queryRunner.manager;
+    const userRepository = entityManager.getCustomRepository(UserRepository);
+    const historyRepository =
+      entityManager.getCustomRepository(HistoryRepository);
+
     // user 존재하는지 확인 (추후 로그인으로 대체)
     const user =
-      await this.userRepository.findOneByIdWithWalletAndHistoryTablesOrThrow(
-        id,
+      await userRepository.findOneByIdWithWalletAndHistoryTablesOrThrow(id);
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction('SERIALIZABLE');
+
+    try {
+      // Charge cash
+      const chargedUser = await userRepository.chargeCash(user, userChargeDto);
+      // Create a deposit history
+      const depositHistory = await historyRepository.createAndSave({
+        type: HistoryTypes[0],
+        cashAmount: userChargeDto.cashAmountToCharge,
+      });
+      // Register history to user
+      const registerRes = await userRepository.registerHistory(
+        chargedUser,
+        depositHistory,
       );
 
-    // Charge cash
-    const chargedUser = await this.userRepository.chargeCash(
-      user,
-      userChargeDto,
-    );
-
-    // Create a deposit history
-    const depositHistory = await this.historyRepository.createAndSave({
-      type: HistoryTypes[0],
-      cashAmount: userChargeDto.cashAmountToCharge,
-    });
-
-    // Register history to user
-    return await this.userRepository.registerHistory(
-      chargedUser,
-      depositHistory,
-    );
+      await queryRunner.commitTransaction();
+      return registerRes;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(err);
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   // Withdraw cash
