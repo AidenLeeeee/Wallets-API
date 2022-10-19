@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { IsNotEmpty, IsPositive, IsString } from 'class-validator';
 import { User as UserEntity } from 'src/users/user.entity';
 import {
@@ -32,4 +33,21 @@ export class Wallet {
 
   @OneToOne(() => UserEntity, (user) => user.wallet, { onDelete: 'CASCADE' })
   user: UserEntity;
+
+  // Check whether user has enough cash or not
+  checkWalletHasEnoughCashOrThrow(cashAmount: number): void {
+    if (this.cashAmount < cashAmount) {
+      throw new BadRequestException("ERROR: You don't have enough cash.");
+    }
+  }
+
+  // Deposit cash
+  makeDeposit(cashAmount: number): void {
+    this.cashAmount += cashAmount;
+  }
+
+  // Withdraw cash
+  makeWithdrawal(cashAmount: number): void {
+    this.cashAmount -= cashAmount;
+  }
 }

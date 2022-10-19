@@ -1,12 +1,6 @@
-import {
-  BadRequestException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { HistoryTypes } from 'src/common/types/types';
-import { HistoryRegisterDto } from 'src/histories/dtos/history.register.dto';
 import { HistoryRepository } from 'src/histories/repositories/history.repository';
-import { TradeLogCreateDto } from 'src/trade-logs/dtos/trade-log.create.dto';
 import { TradeLogRepository } from 'src/trade-logs/repositories/trade-log.repository';
 import { WalletRegisterDto } from 'src/wallets/dtos/wallet.register.dto';
 import { WalletRepository } from 'src/wallets/repositories/wallet.repository';
@@ -32,22 +26,20 @@ export class UsersService {
 
   // Create a user
   async registerUser(userRegisterDto: UserRegisterDto) {
-    const user = await this.userRepository.findOneByPhoneOrEmail(
+    await this.userRepository.findOneByPhoneOrEmailThenThrow(
       userRegisterDto.phone,
       userRegisterDto.email,
     );
-    if (user) throw new UnauthorizedException('Your Account already exists.');
     return await this.userRepository.createAndSave(userRegisterDto);
   }
 
   // Charge cash
   async chargeCash(id: number, userChargeDto: UserChargeDto) {
-    const TYPES = HistoryTypes[0];
     // user 존재하는지 확인 (추후 로그인으로 대체)
     const user =
-      await this.userRepository.findOneByIdWithWalletAndHistoryTables(id);
-    // user 에게 등록된 wallet 존재하는지 확인
-    this.userRepository.checkUserAndWalletExistOrThrow(user);
+      await this.userRepository.findOneByIdWithWalletAndHistoryTablesOrThrow(
+        id,
+      );
 
     // Charge cash
     const chargedUser = await this.userRepository.chargeCash(
@@ -56,13 +48,10 @@ export class UsersService {
     );
 
     // Create a deposit history
-    const historyRegisterDto: HistoryRegisterDto = {
-      type: TYPES,
+    const depositHistory = await this.historyRepository.createAndSave({
+      type: HistoryTypes[0],
       cashAmount: userChargeDto.cashAmountToCharge,
-    };
-    const depositHistory = await this.historyRepository.createAndSave(
-      historyRegisterDto,
-    );
+    });
 
     // Register history to user
     return await this.userRepository.registerHistory(
@@ -73,18 +62,15 @@ export class UsersService {
 
   // Withdraw cash
   async withdrawCash(id: number, userWithdrawDto: UserWithdrawDto) {
-    const TYPES = HistoryTypes[1];
+    const { cashAmountToWithdraw } = userWithdrawDto;
     // user 존재하는지 확인 (추후 로그인으로 대체)
     const user =
-      await this.userRepository.findOneByIdWithWalletAndHistoryTables(id);
-    // user 에게 등록된 wallet 존재하는지 확인
-    this.userRepository.checkUserAndWalletExistOrThrow(user);
+      await this.userRepository.findOneByIdWithWalletAndHistoryTablesOrThrow(
+        id,
+      );
 
     // user 가 충분한 CashAmount 를 보유하고 있는지 확인
-    this.userRepository.checkUserHasEnoughCashOrThrow(
-      user,
-      userWithdrawDto.cashAmountToWithdraw,
-    );
+    user.wallet.checkWalletHasEnoughCashOrThrow(cashAmountToWithdraw);
 
     // Withdraw cash
     const withdrawnUser = await this.userRepository.withdrawCash(
@@ -93,13 +79,10 @@ export class UsersService {
     );
 
     // Create a withdrawal history
-    const historyRegisterDto: HistoryRegisterDto = {
-      type: TYPES,
-      cashAmount: userWithdrawDto.cashAmountToWithdraw,
-    };
-    const withdrawalHistory = await this.historyRepository.createAndSave(
-      historyRegisterDto,
-    );
+    const withdrawalHistory = await this.historyRepository.createAndSave({
+      type: HistoryTypes[1],
+      cashAmount: cashAmountToWithdraw,
+    });
 
     // Register history to user
     return await this.userRepository.registerHistory(
@@ -115,49 +98,42 @@ export class UsersService {
     // user, targetUser 존재하는지 확인 (추후 로그인으로 대체)
     // user, targetUser 에게 등록된 wallet 이 있는지 확인
     const user =
-      await this.userRepository.findOneByIdWithWalletAndHistoryTables(id);
-    this.userRepository.checkUserAndWalletExistOrThrow(user);
+      await this.userRepository.findOneByIdWithWalletAndHistoryTablesOrThrow(
+        id,
+      );
     const targetUser =
-      await this.userRepository.findOneByIdWithWalletAndHistoryTables(targetId);
-    this.userRepository.checkUserAndWalletExistOrThrow(targetUser);
+      await this.userRepository.findOneByIdWithWalletAndHistoryTablesOrThrow(
+        targetId,
+      );
 
     // user 가 충분한 CashAmount 를 보유하고 있는지 확인
-    this.userRepository.checkUserHasEnoughCashOrThrow(user, cashAmountToSend);
+    user.wallet.checkWalletHasEnoughCashOrThrow(cashAmountToSend);
 
     // Send cash
     const { updatedUser, updatedTargetUser, cashAmount } =
       await this.userRepository.sendCash(user, targetUser, cashAmountToSend);
 
     // Create a trade log
-    const tradeLogCreateDto: TradeLogCreateDto = {
+    const tradeLogResult = await this.tradeLogRepository.createAndSave({
       senderId: updatedUser.id,
       receiverId: updatedTargetUser.id,
       cashAmount: cashAmount,
-    };
-
-    const tradeLogResult = await this.tradeLogRepository.createAndSave(
-      tradeLogCreateDto,
-    );
+    });
 
     // Create a history
-    const senderHistoryRegisterDto: HistoryRegisterDto = {
+    const senderHistoryResult = await this.historyRepository.createAndSave({
       type: HistoryTypes[1],
       cashAmount: cashAmount,
-    };
-    const receiverHistoryRegisterDto: HistoryRegisterDto = {
+    });
+    const receiverHistoryResult = await this.historyRepository.createAndSave({
       type: HistoryTypes[0],
       cashAmount: cashAmount,
-    };
+    });
 
-    const senderHistoryResult = await this.historyRepository.createAndSave(
-      senderHistoryRegisterDto,
-    );
+    // Register history to user
     const sender = await this.userRepository.registerHistory(
       updatedUser,
       senderHistoryResult,
-    );
-    const receiverHistoryResult = await this.historyRepository.createAndSave(
-      receiverHistoryRegisterDto,
     );
     const receiver = await this.userRepository.registerHistory(
       updatedTargetUser,
@@ -173,8 +149,10 @@ export class UsersService {
 
   // Get cash
   async getCash(id: number) {
-    const user = await this.userRepository.findOneByIdWithWalletTable(id);
-    this.userRepository.checkUserAndWalletExistOrThrow(user);
+    const user = await this.userRepository.findOneByIdWithWalletTableOrThrow(
+      id,
+      true,
+    );
     return user.wallet.cashAmount;
   }
 
@@ -185,15 +163,13 @@ export class UsersService {
 
   // Get history
   async getHistory(id: number) {
-    const user = await this.userRepository.findOneByIdWithWalletTable(id);
-    this.userRepository.checkUserAndWalletExistOrThrow(user);
+    await this.userRepository.findOneByIdWithWalletTableOrThrow(id, true);
     return await this.historyRepository.findAllHistoryByUserId(id);
   }
 
   // Get deposit history
   async getDepositHistory(id: number) {
-    const user = await this.userRepository.findOneByIdWithWalletTable(id);
-    this.userRepository.checkUserAndWalletExistOrThrow(user);
+    await this.userRepository.findOneByIdWithWalletTableOrThrow(id, true);
     return await this.historyRepository.findAllHistoryByUserIdWithTypes(
       id,
       HistoryTypes[0],
@@ -202,8 +178,7 @@ export class UsersService {
 
   // Get withdrawal history
   async getWithdrawalHistory(id: number) {
-    const user = await this.userRepository.findOneByIdWithWalletTable(id);
-    this.userRepository.checkUserAndWalletExistOrThrow(user);
+    await this.userRepository.findOneByIdWithWalletTableOrThrow(id, true);
     return await this.historyRepository.findAllHistoryByUserIdWithTypes(
       id,
       HistoryTypes[1],
@@ -216,20 +191,13 @@ export class UsersService {
     walletRegisterDto: WalletRegisterDto,
   ) {
     // user 가 존재하는지 확인
-    const user = await this.userRepository.findOneByIdWithWalletTable(id);
-    this.userRepository.checkUserExistOrThrow(user);
-    // user 에게 등록된 wallet 이 존재하는지 확인
-    if (user.wallet) {
-      throw new BadRequestException('You already have a wallet.');
-    }
+    const user = await this.userRepository.findOneByIdWithWalletTableOrThrow(
+      id,
+      false,
+    );
 
     // 동일한 계좌로 등록된 wallet 이 존재하는지 확인
-    const wallet = await this.walletRepository.findOneByBankAndNumber(
-      walletRegisterDto,
-    );
-    if (wallet) {
-      throw new BadRequestException('Your bank account is already in use.');
-    }
+    await this.walletRepository.checkBankAndNumberExist(walletRegisterDto);
 
     const newWallet = await this.walletRepository.createAndSave(
       walletRegisterDto,

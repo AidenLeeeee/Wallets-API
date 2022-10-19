@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { EntityRepository, Repository } from 'typeorm';
 import { WalletRegisterDto } from '../dtos/wallet.register.dto';
 import { Wallet as WalletEntity } from '../wallet.entity';
@@ -9,14 +10,21 @@ export class WalletRepository extends Repository<WalletEntity> {
     return await this.find();
   }
 
-  // Find a wallet by Account Bank or Account Number
-  async findOneByBankAndNumber(walletRegisterDto: WalletRegisterDto) {
-    return await this.findOne({
+  // Check the same Account Bank and Account Number are used
+  async checkBankAndNumberExist({
+    accountBank,
+    accountNumber,
+  }: WalletRegisterDto) {
+    const wallet = await this.findOne({
       where: {
-        accountBank: walletRegisterDto.accountBank,
-        accountNumber: walletRegisterDto.accountNumber,
+        accountBank: accountBank,
+        accountNumber: accountNumber,
       },
     });
+
+    if (wallet) {
+      throw new BadRequestException('Your bank account is already in use.');
+    }
   }
 
   // Create a wallet

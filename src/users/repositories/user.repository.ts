@@ -1,4 +1,4 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { History as HistoryEntity } from 'src/histories/history.entity';
 import { Wallet as WalletEntity } from 'src/wallets/wallet.entity';
 import { EntityRepository, Repository } from 'typeorm';
@@ -22,30 +22,49 @@ export class UserRepository extends Repository<UserEntity> {
   }
 
   // Find a user by Id with wallet table
-  async findOneByIdWithWalletTable(id: number) {
+  async findOneByIdWithWalletTableOrThrow(id: number, walletExist: boolean) {
     const user = await this.findOne({
       relations: ['wallet'],
       where: { id: id },
     });
 
+    if (!user) {
+      throw new UnauthorizedException('ERROR: No user matches.');
+    }
+
+    if (walletExist) {
+      user.checkUserHasWalletOrThrow();
+    } else {
+      user.checkUserHasWalletAndThrow();
+    }
+
     return user;
   }
 
   // Find a user by Id with wallet and history tables
-  async findOneByIdWithWalletAndHistoryTables(id: number) {
+  async findOneByIdWithWalletAndHistoryTablesOrThrow(id: number) {
     const user = await this.findOne({
       relations: ['wallet', 'history'],
       where: { id: id },
     });
 
+    if (!user) {
+      throw new UnauthorizedException('ERROR: No user matches.');
+    }
+    user.checkUserHasWalletOrThrow();
+
     return user;
   }
 
   // Find a user by Phone or Email
-  async findOneByPhoneOrEmail(phone: string, email: string) {
-    return await this.findOne({
+  async findOneByPhoneOrEmailThenThrow(phone: string, email: string) {
+    const user = await this.findOne({
       where: [{ email }, { phone }],
     });
+
+    if (user) {
+      throw new UnauthorizedException('Your Account already exists.');
+    }
   }
 
   // Create a user
@@ -53,15 +72,24 @@ export class UserRepository extends Repository<UserEntity> {
     return await this.save(userRegisterDto);
   }
 
+  // Register wallet
+  async registerWallet(user: UserEntity, wallet: WalletEntity) {
+    user.registerWallet(wallet);
+    return await this.save(user);
+  }
+
   // Charge cash
-  async chargeCash(user: UserEntity, userChargeDto: UserChargeDto) {
-    user.wallet.cashAmount += userChargeDto.cashAmountToCharge;
+  async chargeCash(user: UserEntity, { cashAmountToCharge }: UserChargeDto) {
+    user.wallet.makeDeposit(cashAmountToCharge);
     return await this.save(user);
   }
 
   // Withdraw cash
-  async withdrawCash(user: UserEntity, userWithdrawDto: UserWithdrawDto) {
-    user.wallet.cashAmount -= userWithdrawDto.cashAmountToWithdraw;
+  async withdrawCash(
+    user: UserEntity,
+    { cashAmountToWithdraw }: UserWithdrawDto,
+  ) {
+    user.wallet.makeWithdrawal(cashAmountToWithdraw);
     return await this.save(user);
   }
 
@@ -72,11 +100,11 @@ export class UserRepository extends Repository<UserEntity> {
     cashAmountToSend: number,
   ) {
     // user wallet 에서 출금
-    user.wallet.cashAmount -= cashAmountToSend;
+    user.wallet.makeWithdrawal(cashAmountToSend);
     const updatedUser = await this.save(user);
 
     // target user wallet 에 입금
-    targetUser.wallet.cashAmount += cashAmountToSend;
+    targetUser.wallet.makeDeposit(cashAmountToSend);
     const updatedTargetUser = await this.save(targetUser);
 
     return {
@@ -86,42 +114,9 @@ export class UserRepository extends Repository<UserEntity> {
     };
   }
 
-  // Register wallet
-  async registerWallet(user: UserEntity, wallet: WalletEntity) {
-    user.wallet = wallet;
-    return await this.save(user);
-  }
-
   // Register history
   async registerHistory(user: UserEntity, history: HistoryEntity) {
-    user.history.push(history);
+    user.registerHistory(history);
     return await this.save(user);
-  }
-
-  // Check whether user has enough cash or not
-  checkUserHasEnoughCashOrThrow(user: UserEntity, cashAmount: number): void {
-    if (user.wallet.cashAmount < cashAmount) {
-      throw new BadRequestException("ERROR: You don't have enough cash.");
-    }
-  }
-
-  // Check whether user exist or not
-  checkUserExistOrThrow(user: UserEntity | undefined): void {
-    if (!user) {
-      throw new UnauthorizedException('ERROR: No user matches.');
-    }
-  }
-
-  // Check whether wallet exist or not
-  checkWalletExistOrThrow(user: UserEntity): void {
-    if (!user.wallet) {
-      throw new BadRequestException('ERROR: Cannot find wallet.');
-    }
-  }
-
-  // Check whether user and wallet or not
-  checkUserAndWalletExistOrThrow(user: UserEntity | undefined): void {
-    this.checkUserExistOrThrow(user);
-    this.checkWalletExistOrThrow(user);
   }
 }

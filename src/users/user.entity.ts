@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import {
   IsEmail,
   IsNotEmpty,
@@ -52,4 +53,27 @@ export class User {
 
   @OneToMany(() => HistoryEntity, (history) => history.user)
   history: HistoryEntity[];
+
+  // Check whether user has wallet or not
+  checkUserHasWalletOrThrow() {
+    if (!this.wallet) {
+      throw new BadRequestException('ERROR: Cannot find wallet.');
+    }
+  }
+
+  checkUserHasWalletAndThrow() {
+    if (this.wallet) {
+      throw new BadRequestException('You already have a wallet.');
+    }
+  }
+
+  // Register wallet
+  registerWallet(wallet: WalletEntity): void {
+    this.wallet = wallet;
+  }
+
+  // Register history
+  registerHistory(history: HistoryEntity): void {
+    this.history.push(history);
+  }
 }
