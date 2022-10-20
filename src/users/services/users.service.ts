@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/typeorm';
 import { HistoryTypes } from 'src/common/types/types';
 import { HistoryRepository } from 'src/histories/repositories/history.repository';
 import { TradeLogRepository } from 'src/trade-logs/repositories/trade-log.repository';
@@ -16,10 +15,9 @@ import { UserRepository } from '../repositories/user.repository';
 export class UsersService {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly walletRepository: WalletRepository,
     private readonly tradeLogRepository: TradeLogRepository,
     private readonly historyRepository: HistoryRepository,
-    @InjectConnection() private connection: Connection,
+    private connection: Connection,
   ) {}
 
   // Find all users
@@ -67,9 +65,9 @@ export class UsersService {
 
       await queryRunner.commitTransaction();
       return registerRes;
-    } catch (err) {
+    } catch (e) {
       await queryRunner.rollbackTransaction();
-      throw new BadRequestException(err);
+      throw new BadRequestException(e);
     } finally {
       await queryRunner.release();
     }
@@ -77,89 +75,116 @@ export class UsersService {
 
   // Withdraw cash
   async withdrawCash(id: number, userWithdrawDto: UserWithdrawDto) {
+    const queryRunner = this.connection.createQueryRunner();
+    const entityManager = queryRunner.manager;
+    const userRepository = entityManager.getCustomRepository(UserRepository);
+    const historyRepository =
+      entityManager.getCustomRepository(HistoryRepository);
     const { cashAmountToWithdraw } = userWithdrawDto;
+
     // user 존재하는지 확인 (추후 로그인으로 대체)
     const user =
-      await this.userRepository.findOneByIdWithWalletAndHistoryTablesOrThrow(
-        id,
-      );
+      await userRepository.findOneByIdWithWalletAndHistoryTablesOrThrow(id);
 
     // user 가 충분한 CashAmount 를 보유하고 있는지 확인
     user.wallet.checkWalletHasEnoughCashOrThrow(cashAmountToWithdraw);
 
-    // Withdraw cash
-    const withdrawnUser = await this.userRepository.withdrawCash(
-      user,
-      userWithdrawDto,
-    );
+    await queryRunner.connect();
+    await queryRunner.startTransaction('SERIALIZABLE');
 
-    // Create a withdrawal history
-    const withdrawalHistory = await this.historyRepository.createAndSave({
-      type: HistoryTypes[1],
-      cashAmount: cashAmountToWithdraw,
-    });
+    try {
+      // Withdraw cash
+      const withdrawnUser = await userRepository.withdrawCash(
+        user,
+        userWithdrawDto,
+      );
+      // Create a withdrawal history
+      const withdrawalHistory = await historyRepository.createAndSave({
+        type: HistoryTypes[1],
+        cashAmount: cashAmountToWithdraw,
+      });
+      // Register history to user
+      const registerRes = await userRepository.registerHistory(
+        withdrawnUser,
+        withdrawalHistory,
+      );
 
-    // Register history to user
-    return await this.userRepository.registerHistory(
-      withdrawnUser,
-      withdrawalHistory,
-    );
+      await queryRunner.commitTransaction();
+      return registerRes;
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(e);
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   // Send cash
   async sendCash(id: number, userSendCashDto: UserSendCashDto) {
+    const queryRunner = this.connection.createQueryRunner();
+    const entityManager = queryRunner.manager;
+    const userRepository = entityManager.getCustomRepository(UserRepository);
+    const tradeLogRepository =
+      entityManager.getCustomRepository(TradeLogRepository);
+    const historyRepository =
+      entityManager.getCustomRepository(HistoryRepository);
+
     const { targetId, cashAmountToSend } = userSendCashDto;
 
     // user, targetUser 존재하는지 확인 (추후 로그인으로 대체)
     // user, targetUser 에게 등록된 wallet 이 있는지 확인
     const user =
-      await this.userRepository.findOneByIdWithWalletAndHistoryTablesOrThrow(
-        id,
-      );
+      await userRepository.findOneByIdWithWalletAndHistoryTablesOrThrow(id);
     const targetUser =
-      await this.userRepository.findOneByIdWithWalletAndHistoryTablesOrThrow(
+      await userRepository.findOneByIdWithWalletAndHistoryTablesOrThrow(
         targetId,
       );
 
     // user 가 충분한 CashAmount 를 보유하고 있는지 확인
     user.wallet.checkWalletHasEnoughCashOrThrow(cashAmountToSend);
 
-    // Send cash
-    const { updatedUser, updatedTargetUser, cashAmount } =
-      await this.userRepository.sendCash(user, targetUser, cashAmountToSend);
+    await queryRunner.connect();
+    await queryRunner.startTransaction('SERIALIZABLE');
 
-    // Create a trade log
-    const tradeLogResult = await this.tradeLogRepository.createAndSave({
-      senderId: updatedUser.id,
-      receiverId: updatedTargetUser.id,
-      cashAmount: cashAmount,
-    });
+    try {
+      // Send cash
+      const { updatedUser, updatedTargetUser, cashAmount } =
+        await userRepository.sendCash(user, targetUser, cashAmountToSend);
+      // Create a trade log
+      const tradeLogResult = await tradeLogRepository.createAndSave({
+        senderId: updatedUser.id,
+        receiverId: updatedTargetUser.id,
+        cashAmount: cashAmount,
+      });
+      // Create a history
+      const senderHistoryResult = await historyRepository.createAndSave({
+        type: HistoryTypes[1],
+        cashAmount: cashAmount,
+      });
+      const receiverHistoryResult = await historyRepository.createAndSave({
+        type: HistoryTypes[0],
+        cashAmount: cashAmount,
+      });
+      // Register history to user
+      const sender = await userRepository.registerHistory(
+        updatedUser,
+        senderHistoryResult,
+      );
+      const receiver = await userRepository.registerHistory(
+        updatedTargetUser,
+        receiverHistoryResult,
+      );
+      // Make Response
+      const res = { sender, receiver, tradeLog: tradeLogResult };
 
-    // Create a history
-    const senderHistoryResult = await this.historyRepository.createAndSave({
-      type: HistoryTypes[1],
-      cashAmount: cashAmount,
-    });
-    const receiverHistoryResult = await this.historyRepository.createAndSave({
-      type: HistoryTypes[0],
-      cashAmount: cashAmount,
-    });
-
-    // Register history to user
-    const sender = await this.userRepository.registerHistory(
-      updatedUser,
-      senderHistoryResult,
-    );
-    const receiver = await this.userRepository.registerHistory(
-      updatedTargetUser,
-      receiverHistoryResult,
-    );
-
-    return {
-      sender: sender,
-      receiver: receiver,
-      tradeLog: tradeLogResult,
-    };
+      await queryRunner.commitTransaction();
+      return res;
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(e);
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   // Get cash
@@ -205,18 +230,37 @@ export class UsersService {
     id: number,
     walletRegisterDto: WalletRegisterDto,
   ) {
+    const queryRunner = this.connection.createQueryRunner();
+    const entityManager = queryRunner.manager;
+    const userRepository = entityManager.getCustomRepository(UserRepository);
+    const walletRepository =
+      entityManager.getCustomRepository(WalletRepository);
+
     // user 가 존재하는지 확인
-    const user = await this.userRepository.findOneByIdWithWalletTableOrThrow(
+    const user = await userRepository.findOneByIdWithWalletTableOrThrow(
       id,
       false,
     );
 
     // 동일한 계좌로 등록된 wallet 이 존재하는지 확인
-    await this.walletRepository.checkBankAndNumberExist(walletRegisterDto);
+    await walletRepository.checkBankAndNumberExist(walletRegisterDto);
 
-    const newWallet = await this.walletRepository.createAndSave(
-      walletRegisterDto,
-    );
-    return await this.userRepository.registerWallet(user, newWallet);
+    await queryRunner.connect();
+    await queryRunner.startTransaction('SERIALIZABLE');
+
+    try {
+      // Create a wallet
+      const newWallet = await walletRepository.createAndSave(walletRegisterDto);
+      // Register wallet to User
+      const registerRes = await userRepository.registerWallet(user, newWallet);
+
+      await queryRunner.commitTransaction();
+      return registerRes;
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(e);
+    } finally {
+      await queryRunner.release();
+    }
   }
 }
