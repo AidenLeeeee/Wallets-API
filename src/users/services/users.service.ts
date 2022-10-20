@@ -175,7 +175,11 @@ export class UsersService {
         receiverHistoryResult,
       );
       // Make Response
-      const res = { sender, receiver, tradeLog: tradeLogResult };
+      const res = {
+        sender,
+        receiver,
+        tradeLog: tradeLogResult,
+      };
 
       await queryRunner.commitTransaction();
       return res;
@@ -193,7 +197,7 @@ export class UsersService {
       id,
       true,
     );
-    return user.wallet.cashAmount;
+    return user.wallet.getCash();
   }
 
   // Get trade log

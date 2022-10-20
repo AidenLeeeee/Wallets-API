@@ -50,4 +50,9 @@ export class Wallet {
   makeWithdrawal(cashAmount: number): void {
     this.cashAmount -= cashAmount;
   }
+
+  // Get cash
+  getCash(): number {
+    return this.cashAmount;
+  }
 }
