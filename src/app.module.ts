@@ -5,6 +5,7 @@ import { TradeLogsModule } from './trade-logs/trade-logs.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { HistoriesModule } from './histories/histories.module';
+import { AdminsModule } from './admins/admins.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { HistoriesModule } from './histories/histories.module';
     WalletsModule,
     TradeLogsModule,
     HistoriesModule,
+    AdminsModule,
   ],
 })
 export class AppModule {}
